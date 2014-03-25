@@ -11,7 +11,8 @@ var Click = require('./app/models/click');
 
 var app = express();
 
-var loggedIn = false;
+app.use(express.cookieParser());
+app.use(express.cookieSession({ 'secret': 'secret' }));
 
 app.configure(function() {
   app.set('views', __dirname + '/views');
@@ -21,17 +22,25 @@ app.configure(function() {
   app.use(express.static(__dirname + '/public'));
 });
 
+app.get('/logout', function(req, res){
+  req.session.loggedIn = false;
+  res.redirect('/login');
+})
+
 app.get('/', function(req, res) {
-  if(!!loggedIn){
+  if(util.checkUser(req)){
     res.render('index');
-    loggedIn = false;
   } else {
     res.redirect('/login');
   }
 });
 
 app.get('/create', function(req, res) {
-  res.redirect('/login');
+  if(util.checkUser(req)){
+    res.render('index');
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.get('/login', function(req, res) {
@@ -103,6 +112,7 @@ app.post('/signup', function(req, res){
         Users.add(newUser);
         res.send(200);
       });
+      req.session.loggedIn = true;
       res.redirect('/');
 
     }
@@ -115,12 +125,12 @@ app.post('/login', function(req, res){
   var name = req.body.username.toLowerCase();
   var pword = req.body.password;
   // does username already exist?
-  util.checkUser(name, pword, function(response){
-    console.log(response);
-    if(!response){
-      res.send(404, 'Failed login attempt');
-    } else {
-      loggedIn = true;
+  new User({username: name, password: pword}).fetch().then(function(found) {
+    if(!found){
+      res.send(404, "Not a valid login.");
+    } else{
+      req.session.loggedIn = true;
+      console.log(req.session);
       res.redirect('/');
     }
   });
