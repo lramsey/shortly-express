@@ -11,6 +11,8 @@ var Click = require('./app/models/click');
 
 var app = express();
 
+var loggedIn = false;
+
 app.configure(function() {
   app.set('views', __dirname + '/views');
   app.set('view engine', 'ejs');
@@ -20,15 +22,16 @@ app.configure(function() {
 });
 
 app.get('/', function(req, res) {
-  res.render('login');
-})
-
-app.get('/home', function(req, res) {
-  res.render('index');
-})
+  if(!!loggedIn){
+    res.render('index');
+    loggedIn = false;
+  } else {
+    res.redirect('/login');
+  }
+});
 
 app.get('/create', function(req, res) {
-  res.render('index');
+  res.redirect('/login');
 });
 
 app.get('/login', function(req, res) {
@@ -100,7 +103,7 @@ app.post('/signup', function(req, res){
         Users.add(newUser);
         res.send(200);
       });
-      res.redirect('/home');
+      res.redirect('/');
 
     }
   });
@@ -112,12 +115,13 @@ app.post('/login', function(req, res){
   var name = req.body.username.toLowerCase();
   var pword = req.body.password;
   // does username already exist?
-  new User({username: name, password: pword}).fetch().then(function(found) {
-    console.log(found);
-    if(!found) {
-      res.send(404, 'We have no account record for that username and password.');
+  util.checkUser(name, pword, function(response){
+    console.log(response);
+    if(!response){
+      res.send(404, 'Failed login attempt');
     } else {
-      res.redirect('/home');
+      loggedIn = true;
+      res.redirect('/');
     }
   });
 
