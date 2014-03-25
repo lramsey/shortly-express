@@ -20,11 +20,23 @@ app.configure(function() {
 });
 
 app.get('/', function(req, res) {
+  res.render('login');
+})
+
+app.get('/home', function(req, res) {
   res.render('index');
-});
+})
 
 app.get('/create', function(req, res) {
   res.render('index');
+});
+
+app.get('/login', function(req, res) {
+  res.render('login');
+})
+
+app.get('/signup', function(req, res){
+  res.render('signup')
 });
 
 app.get('/links', function(req, res) {
@@ -38,7 +50,7 @@ app.post('/links', function(req, res) {
 
   if (!util.isValidUrl(uri)) {
     console.log('Not a valid url: ', uri);
-    return res.send(404);
+    return res.send(404, 'Invalid url');
   }
 
   new Link({ url: uri }).fetch().then(function(found) {
@@ -65,6 +77,53 @@ app.post('/links', function(req, res) {
     }
   });
 });
+
+app.post('/signup', function(req, res){
+  var name = req.body.username.toLowerCase();
+  var pword = req.body.password;
+  //isValidUsername?
+  if(!util.isValidUsername(name)) {
+    console.log('Not a valid username: ', name);
+    return res.send(404, "not a valid username");
+  }
+  // does username already exist?
+  new User({username: name}).fetch().then(function(found) {
+    if(found) {
+      res.send(404, 'That username is already taken.');
+    } else {
+      var user = new User({
+        username: name,
+        password: pword
+      });
+
+      user.save().then(function(newUser){
+        Users.add(newUser);
+        res.send(200);
+      });
+      res.redirect('/home');
+
+    }
+  });
+
+  console.log(req.body);
+});
+
+app.post('/login', function(req, res){
+  var name = req.body.username.toLowerCase();
+  var pword = req.body.password;
+  // does username already exist?
+  new User({username: name, password: pword}).fetch().then(function(found) {
+    console.log(found);
+    if(!found) {
+      res.send(404, 'We have no account record for that username and password.');
+    } else {
+      res.redirect('/home');
+    }
+  });
+
+  // console.log(req.body);
+});
+
 
 /************************************************************/
 // Write your authentication routes here

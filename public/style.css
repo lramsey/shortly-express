@@ -132,6 +132,6 @@ form input[type=text], form input[type=password] {
   display: none;
 }
 
-.creator .message {
+.message {
   clear: both;
 }
