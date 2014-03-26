@@ -1,6 +1,7 @@
 var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
+var bcrypt = require('bcrypt-nodejs');
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -11,6 +12,9 @@ var Click = require('./app/models/click');
 
 var app = express();
 
+app.use(express.cookieParser());
+app.use(express.cookieSession({ 'secret': 'secret' }));
+
 app.configure(function() {
   app.set('views', __dirname + '/views');
   app.set('view engine', 'ejs');
@@ -19,12 +23,33 @@ app.configure(function() {
   app.use(express.static(__dirname + '/public'));
 });
 
+app.get('/logout', function(req, res){
+  req.session.loggedIn = false;
+  res.redirect('/login');
+})
+
 app.get('/', function(req, res) {
-  res.render('index');
+  if(util.checkUser(req)){
+    res.render('index');
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.get('/create', function(req, res) {
-  res.render('index');
+  if(util.checkUser(req)){
+    res.render('index');
+  } else {
+    res.redirect('/login');
+  }
+});
+
+app.get('/login', function(req, res) {
+  res.render('login');
+})
+
+app.get('/signup', function(req, res){
+  res.render('signup')
 });
 
 app.get('/links', function(req, res) {
@@ -38,7 +63,7 @@ app.post('/links', function(req, res) {
 
   if (!util.isValidUrl(uri)) {
     console.log('Not a valid url: ', uri);
-    return res.send(404);
+    return res.send(404, 'Invalid url');
   }
 
   new Link({ url: uri }).fetch().then(function(found) {
@@ -54,7 +79,8 @@ app.post('/links', function(req, res) {
         var link = new Link({
           url: uri,
           title: title,
-          base_url: req.headers.origin
+          base_url: req.headers.origin,
+          user_id: req.session.user_id
         });
 
         link.save().then(function(newLink) {
@@ -65,6 +91,61 @@ app.post('/links', function(req, res) {
     }
   });
 });
+
+app.post('/signup', function(req, res){
+  var name = req.body.username.toLowerCase();
+  var pword = req.body.password;
+  //isValidUsername?
+  if(!util.isValidUsername(name)) {
+    console.log('Not a valid username: ', name);
+    return res.send(404, "not a valid username");
+  }
+  // does username already exist?
+  new User({username: name}).fetch().then(function(found) {
+    if(found) {
+      res.send(404, 'That username is already taken.');
+    } else {
+      var user = new User({
+        username: name,
+        password: pword
+      });
+
+      user.save().then(function(newUser){
+        Users.add(newUser);
+        res.send(200);
+      });
+      req.session.loggedIn = true;
+      res.redirect('/');
+
+    }
+  });
+
+});
+
+app.post('/login', function(req, res){
+  var name = req.body.username.toLowerCase();
+  var pword = req.body.password;
+
+  new User({username: name}).fetch().then(function(found) {
+    if(!found){
+      res.redirect('/login');
+    } else{
+      found.compare(pword, function(response){
+        if(response){
+          req.session.loggedIn = true;
+          req.session.user_id = found.id;
+          console.log(found);
+          res.redirect('/');
+        }else {
+          res.redirect('/login');
+        }
+      })
+
+    }
+  });
+
+});
+
 
 /************************************************************/
 // Write your authentication routes here

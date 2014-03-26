@@ -3,7 +3,7 @@ Shortly.LinksView = Backbone.View.extend({
 
   initialize: function(){
     this.collection.on('sync', this.addAll, this);
-    this.collection.fetch();
+    this.collection.query('where', {user_id:[12]}).fetch();
   },
 
   render: function() {
