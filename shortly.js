@@ -79,7 +79,8 @@ app.post('/links', function(req, res) {
         var link = new Link({
           url: uri,
           title: title,
-          base_url: req.headers.origin
+          base_url: req.headers.origin,
+          user_id: req.session.user_id
         });
 
         link.save().then(function(newLink) {
@@ -132,6 +133,8 @@ app.post('/login', function(req, res){
       found.compare(pword, function(response){
         if(response){
           req.session.loggedIn = true;
+          req.session.user_id = found.id;
+          console.log(found);
           res.redirect('/');
         }else {
           res.redirect('/login');
