@@ -1,6 +1,7 @@
 var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
+var bcrypt = require('bcrypt-nodejs');
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -118,24 +119,28 @@ app.post('/signup', function(req, res){
     }
   });
 
-  console.log(req.body);
 });
 
 app.post('/login', function(req, res){
   var name = req.body.username.toLowerCase();
   var pword = req.body.password;
-  // does username already exist?
-  new User({username: name, password: pword}).fetch().then(function(found) {
+
+  new User({username: name}).fetch().then(function(found) {
     if(!found){
-      res.send(404, "Not a valid login.");
+      res.redirect('/login');
     } else{
-      req.session.loggedIn = true;
-      console.log(req.session);
-      res.redirect('/');
+      found.compare(pword, function(response){
+        if(response){
+          req.session.loggedIn = true;
+          res.redirect('/');
+        }else {
+          res.redirect('/login');
+        }
+      })
+
     }
   });
 
-  // console.log(req.body);
 });
 
 
